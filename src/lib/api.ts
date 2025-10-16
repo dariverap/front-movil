@@ -96,4 +96,32 @@ export const deleteVehiculo = async (id: number) => {
   return response.data.data || response.data;
 };
 
+// ============== API de Parkings ==============
+export interface Parking {
+  id_parking: number;
+  nombre: string;
+  direccion: string;
+  latitud: number;
+  longitud: number;
+  capacidad_total: number;
+  id_admin?: string;
+}
+
+export const getParkings = async (): Promise<Parking[]> => {
+  const response = await api.get('/parking');
+  return response.data.data || response.data;
+};
+
+export const getNearbyParkings = async (lat: number, lng: number, radius: number = 5): Promise<Parking[]> => {
+  const response = await api.get('/parking/cercanos', {
+    params: { lat, lng, radius }
+  });
+  return response.data.data || response.data;
+};
+
+export const getParkingById = async (id: number): Promise<Parking> => {
+  const response = await api.get(`/parking/${id}`);
+  return response.data.data || response.data;
+};
+
 export default api;
