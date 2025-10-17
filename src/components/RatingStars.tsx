@@ -37,6 +37,6 @@ const styles = StyleSheet.create({
   count: {
     marginLeft: SPACING.sm,
     color: COLORS.textMid,
-    fontSize: TYPE.caption,
+    fontSize: 13,
   },
 });

@@ -75,3 +75,14 @@ yarn-error.log
 
 # Local environment (do not commit credentials)
 .env
+.env.local
+.env.development
+.env.production
+!.env.example
+
+# Build artifacts
+build/
+dist/
+*.apk
+*.aab
+*.ipa

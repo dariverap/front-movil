@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: COLORS.white,
-    fontSize: TYPE.subtitle,
+    fontSize: 16,
     fontWeight: '700',
   },
   outlineGradient: {
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   },
   outlineTitle: {
     color: COLORS.textDark,
-    fontSize: TYPE.subtitle,
+    fontSize: 16,
     fontWeight: '700',
   },
   ghost: {
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   },
   ghostTitle: {
     color: COLORS.primaryEnd,
-    fontSize: TYPE.body,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

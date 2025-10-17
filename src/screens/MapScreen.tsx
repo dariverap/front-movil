@@ -22,6 +22,7 @@ import ButtonGradient from '../components/ButtonGradient';
 import HeaderMenu from '../components/HeaderMenu';
 import { COLORS, SPACING, RADIUS, TYPE } from '../lib/theme';
 import Icon from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { getParkings, getNearbyParkings, Parking } from '../lib/api';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -42,8 +43,26 @@ export default function MapScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [selectedParking, setSelectedParking] = useState<Parking | null>(null);
   const [userLocation, setUserLocation] = useState(DEFAULT_REGION);
+  // Estado del mapa para diagnóstico
+  const [mapReady, setMapReady] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const [quickModal, setQuickModal] = React.useState(false);
+
+  // Capturar errores de renderizado
+  React.useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args) => {
+      if (args[0]?.includes?.('Text strings')) {
+        console.log('[MapScreen] ERROR CAPTURADO:', ...args);
+      }
+      originalError(...args);
+    };
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
 
   // Bottom sheet measurements (sin tab bar - más espacio disponible)
   const HEADER_HEIGHT = 120;
@@ -65,16 +84,29 @@ export default function MapScreen({ navigation }: any) {
       setLoading(true);
       console.log('[MapScreen] Iniciando carga de parkings...');
       const data = await getParkings();
-      console.log('[MapScreen] Parkings cargados:', data.length, 'parkings');
-      console.log('[MapScreen] Primer parking:', data[0]);
-      setParkings(data);
+      
+      // Filtrar solo parkings activos (no eliminados)
+      const activeParkings = data.filter(p => p.deleted_at === null || p.deleted_at === undefined);
+      
+      console.log('[MapScreen] Parkings cargados:', data.length, 'total,', activeParkings.length, 'activos');
+      console.log('[MapScreen] Primer parking activo:', JSON.stringify(activeParkings[0]));
+      
+      setParkings(activeParkings);
       
       // Si hay parkings, centrar el mapa en el primero
-      if (data.length > 0) {
-        const firstParking = data[0];
+      if (activeParkings.length > 0) {
+        const firstParking = activeParkings[0];
+        const lat = Number(firstParking.latitud);
+        const lng = Number(firstParking.longitud);
+        
+        console.log('[MapScreen] Tipo de latitud:', typeof firstParking.latitud, 'valor:', firstParking.latitud);
+        console.log('[MapScreen] Tipo de longitud:', typeof firstParking.longitud, 'valor:', firstParking.longitud);
+        console.log('[MapScreen] Latitud convertida:', lat, 'válida:', !isNaN(lat));
+        console.log('[MapScreen] Longitud convertida:', lng, 'válida:', !isNaN(lng));
+        
         const newRegion = {
-          latitude: Number(firstParking.latitud),
-          longitude: Number(firstParking.longitud),
+          latitude: lat,
+          longitude: lng,
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         };
@@ -125,16 +157,21 @@ export default function MapScreen({ navigation }: any) {
   }, []);
 
   function onMarkerPress(parking: Parking) {
-    setSelectedParking(parking);
-    // Centrar el mapa en el parking seleccionado
-    mapRef.current?.animateToRegion({
-      latitude: Number(parking.latitud),
-      longitude: Number(parking.longitud),
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    }, 1000);
-    // Expandir el bottom sheet
-    animateTo(SHEET_EXPANDED_TOP);
+    // Navegar a la pantalla de detalles del parking
+    navigation.navigate('ParkingDetail', { 
+      parking: {
+        id: parking.id_parking,
+        title: parking.nombre || 'Parking',
+        price: 3.5, // Precio por defecto, puedes ajustarlo según tu tarifa
+        rating: 4.6, // Rating por defecto
+        reviews: 124, // Reviews por defecto
+        address: parking.direccion,
+        latitude: parking.latitud,
+        longitude: parking.longitud,
+        capacity: parking.capacidad_total,
+        ...parking // Pasar todos los datos del parking
+      }
+    });
   }
 
   function renderParkingItem({ item }: { item: Parking }) {
@@ -152,9 +189,9 @@ export default function MapScreen({ navigation }: any) {
         onPress={() => onMarkerPress(item)}
       >
         <View style={{ flex: 1 }}>
-          <Text style={styles.itemTitle}>{item.nombre}</Text>
+          <Text style={styles.itemTitle}>{item.nombre || 'Sin nombre'}</Text>
           <Text style={styles.itemSubtitle} numberOfLines={1}>
-            {item.direccion}
+            {item.direccion || 'Sin dirección'}
           </Text>
           <Text style={styles.itemDistance}>{distance.toFixed(1)} km</Text>
         </View>
@@ -183,7 +220,9 @@ export default function MapScreen({ navigation }: any) {
 
   // Centrar el mapa en la ubicación del usuario
   const centerOnUser = () => {
-    mapRef.current?.animateToRegion(userLocation, 1000);
+    setTimeout(() => {
+      mapRef.current?.animateToRegion(userLocation, 1000);
+    }, 0);
   };
 
   return (
@@ -216,6 +255,22 @@ export default function MapScreen({ navigation }: any) {
             initialRegion={userLocation}
             showsUserLocation
             showsMyLocationButton={false}
+            onMapReady={() => {
+              console.log('[MapScreen] onMapReady');
+              setMapReady(true);
+            }}
+            onMapLoaded={() => {
+              console.log('[MapScreen] onMapLoaded');
+              setMapLoaded(true);
+            }}
+            onError={(e) => {
+              console.error('[MapScreen] Map error:', e?.nativeEvent);
+              try {
+                setMapError(JSON.stringify(e?.nativeEvent));
+              } catch (_) {
+                setMapError('Error desconocido en MapView');
+              }
+            }}
           >
             {parkings.map((parking) => (
               <Marker
@@ -224,17 +279,24 @@ export default function MapScreen({ navigation }: any) {
                   latitude: Number(parking.latitud),
                   longitude: Number(parking.longitud),
                 }}
-                title={parking.nombre}
-                description={parking.direccion}
+                title={parking.nombre || 'Parking'}
+                description={parking.direccion || ''}
                 onPress={() => onMarkerPress(parking)}
-              >
-                <View style={styles.markerContainer}>
-                  <Icon name="car" size={24} color={COLORS.white} />
-                </View>
-              </Marker>
+                pinColor="#FF6B35"
+              />
             ))}
           </MapView>
         )}
+
+        {/* Overlay de diagnóstico para el mapa - Temporalmente deshabilitado */}
+        {/* <View style={styles.mapDebugBadge} pointerEvents="none">
+          <Text style={styles.mapDebugText}>
+            {!mapReady ? 'Mapa: initializing…' : 
+             (mapReady && !mapLoaded) ? 'Mapa: ready, loading tiles…' :
+             mapError ? `Error: ${mapError}` :
+             `Mapa: OK | Marcadores: ${parkings.length}`}
+          </Text>
+        </View> */}
 
         {/* Botón para centrar en ubicación del usuario */}
         <TouchableOpacity
@@ -278,16 +340,19 @@ export default function MapScreen({ navigation }: any) {
             },
           ]}
         >
-          {/* Handle */}
-          <View {...panResponder.panHandlers} style={styles.handleContainer}>
+          {/* Handle - solo esta área maneja el drag */}
+          <View style={styles.handleContainer} {...panResponder.panHandlers}>
             <View style={styles.handle} />
           </View>
 
-          {/* Sheet content */}
+          {/* Sheet content - esta área permite scroll */}
           <View style={styles.sheetContent}>
             <Text style={styles.sheetTitle}>Parkings disponibles</Text>
             <Text style={styles.sheetSubtitle}>
-              {parkings.length} {parkings.length === 1 ? 'parking encontrado' : 'parkings encontrados'}
+              {parkings.length === 0 
+                ? 'No hay parkings disponibles' 
+                : `${parkings.length} ${parkings.length === 1 ? 'parking encontrado' : 'parkings encontrados'}`
+              }
             </Text>
 
             <FlatList
@@ -296,6 +361,7 @@ export default function MapScreen({ navigation }: any) {
               renderItem={renderParkingItem}
               contentContainerStyle={{ paddingBottom: 60 }}
               showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
             />
           </View>
         </Animated.View>
@@ -315,8 +381,20 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   map: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    ...StyleSheet.absoluteFillObject,
+  },
+  mapDebugBadge: {
+    position: 'absolute',
+    top: 140,
+    right: SPACING.md,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  mapDebugText: {
+    color: '#fff',
+    fontSize: 11,
   },
   loadingContainer: {
     flex: 1,
@@ -329,17 +407,15 @@ const styles = StyleSheet.create({
     ...TYPE.body,
     color: COLORS.textMid,
   },
-  markerContainer: {
-    backgroundColor: COLORS.primary,
-    padding: 8,
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: COLORS.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+  markerCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FF6B35',
+    borderWidth: 5,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   locationButton: {
     position: 'absolute',
@@ -386,14 +462,16 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   handleContainer: {
-    paddingVertical: SPACING.sm,
+    paddingVertical: SPACING.md,
     alignItems: 'center',
+    paddingBottom: SPACING.sm,
   },
   handle: {
-    width: 40,
+    width: 50,
     height: 5,
-    backgroundColor: COLORS.border,
+    backgroundColor: COLORS.textMid,
     borderRadius: 3,
+    opacity: 0.5,
   },
   sheetContent: {
     flex: 1,

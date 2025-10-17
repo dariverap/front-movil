@@ -1,5 +1,5 @@
 // screens/ReserveFlowScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProgressSteps from '../components/ProgressSteps';
@@ -21,12 +22,13 @@ import GlassCard from '../components/GlassCard';
 import { COLORS, SPACING, TYPE } from '../lib/theme';
 import Icon from 'react-native-vector-icons/Ionicons';
 import VehicleFormModal from '../components/VehicleFormModal';
-
-// Mock data - replace with real data later
-const mockVehicles = [
-  { id: '1', make: 'Toyota', model: '2020', plate: 'ABC-1234', color: 'Plateado' },
-  { id: '2', make: 'Honda', model: '2019', plate: 'XYZ-5678', color: 'Azul' },
-];
+import { 
+  getVehiculos, 
+  createVehiculo,
+  getEspaciosDisponibles,
+  createReserva,
+  Espacio
+} from '../lib/api';
 
 export default function ReserveFlowScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
@@ -35,14 +37,60 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>('Hoy, 24 Oct');
   const [selectedTime, setSelectedTime] = useState<string | null>('10:00 - 12:00');
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>('1');
-  const [vehicles, setVehicles] = useState(mockVehicles);
+  const [selectedEspacioId, setSelectedEspacioId] = useState<number | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [espacios, setEspacios] = useState<Espacio[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const [loadingEspacios, setLoadingEspacios] = useState(true);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<any>(null);
 
-  const steps = ['Fecha', 'Vehículo', 'Pago'];
+  const steps = ['Fecha', 'Espacio', 'Vehículo', 'Pago'];
+
+  useEffect(() => {
+    loadVehicles();
+    loadEspacios();
+  }, []);
+
+  const loadVehicles = async () => {
+    try {
+      setLoadingVehicles(true);
+      const data = await getVehiculos();
+      setVehicles(data);
+      
+      // Seleccionar el primer vehículo por defecto si hay alguno
+      if (data.length > 0 && !selectedVehicleId) {
+        setSelectedVehicleId(data[0].id_vehiculo);
+      }
+    } catch (error) {
+      console.error('[ReserveFlow] Error cargando vehículos:', error);
+      Alert.alert('Error', 'No se pudieron cargar tus vehículos');
+    } finally {
+      setLoadingVehicles(false);
+    }
+  };
+
+  const loadEspacios = async () => {
+    try {
+      setLoadingEspacios(true);
+      const parkingId = parking.id || parking.id_parking;
+      const data = await getEspaciosDisponibles(parkingId);
+      setEspacios(data);
+      
+      // Seleccionar el primer espacio por defecto
+      if (data.length > 0 && !selectedEspacioId) {
+        setSelectedEspacioId(data[0].id_espacio);
+      }
+    } catch (error) {
+      console.error('[ReserveFlow] Error cargando espacios:', error);
+      Alert.alert('Error', 'No se pudieron cargar los espacios disponibles');
+    } finally {
+      setLoadingEspacios(false);
+    }
+  };
 
   function handleCancelFlow() {
     Alert.alert('Cancelar reserva', '¿Estás seguro que quieres salir y cancelar el proceso de reserva?', [
@@ -64,7 +112,7 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
   }
 
   function handleNext() {
-    // Simple validation per step
+    // Validaciones por paso
     if (currentStep === 0) {
       if (!selectedDate || !selectedTime) {
         Alert.alert('Selecciona fecha y hora', 'Por favor selecciona una fecha y hora para continuar.');
@@ -73,6 +121,13 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
     }
 
     if (currentStep === 1) {
+      if (!selectedEspacioId) {
+        Alert.alert('Selecciona espacio', 'Elige un espacio de estacionamiento para continuar.');
+        return;
+      }
+    }
+
+    if (currentStep === 2) {
       if (!selectedVehicleId) {
         Alert.alert('Selecciona vehículo', 'Elige un vehículo para continuar.');
         return;
@@ -84,19 +139,66 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
       return;
     }
 
-    // Final step -> open confirm modal
+    // Último paso -> abrir modal de confirmación
     setConfirmModalVisible(true);
   }
 
   async function handleConfirmReservation() {
-    setProcessing(true);
-    // Simulate API call
-    setTimeout(() => {
+    if (!selectedEspacioId || !selectedVehicleId) {
+      Alert.alert('Error', 'Faltan datos para completar la reserva');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      
+      // Crear fechas ISO desde los datos seleccionados
+      // TODO: Convertir selectedDate y selectedTime a fechas ISO reales
+      const now = new Date();
+      const fecha_inicio = new Date(now.getTime() + 60 * 60 * 1000).toISOString(); // 1 hora desde ahora
+      const fecha_fin = new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString(); // 3 horas desde ahora
+
+      const reservaCreada = await createReserva({
+        id_espacio: selectedEspacioId,
+        id_vehiculo: selectedVehicleId, // ✅ Ya incluido desde antes
+        fecha_inicio,
+        fecha_fin,
+      });
+
       setProcessing(false);
       setConfirmModalVisible(false);
-      navigation.navigate('Map');
-      Alert.alert('Reserva confirmada', 'Tu reserva se ha realizado con éxito.');
-    }, 1200);
+      
+      // Navegar a pantalla de confirmación con datos de la reserva
+      navigation.navigate('ReservationConfirmed', { 
+        reserva: reservaCreada,
+        parking,
+        espacio: espacios.find(e => e.id_espacio === selectedEspacioId),
+        vehiculo: vehicles.find(v => v.id_vehiculo === selectedVehicleId),
+      });
+      
+    } catch (error: any) {
+      setProcessing(false);
+      setConfirmModalVisible(false);
+      
+      // Extraer mensaje del servidor o usar mensaje por defecto
+      const errorMessage = error.response?.data?.message || 'No se pudo completar la reserva. Intenta nuevamente.';
+      
+      console.log('[ReserveFlow] Error creando reserva:', errorMessage);
+      
+      // Si ya tiene una reserva activa, mostrar mensaje específico
+      if (error.response?.status === 400 && errorMessage.includes('reserva activa')) {
+        Alert.alert(
+          'Reserva activa', 
+          errorMessage + '\n\nPuedes ver y gestionar tu reserva desde "Mis Reservas".',
+          [
+            { text: 'Ir a Mis Reservas', onPress: () => navigation.navigate('MyReservations' as never) },
+            { text: 'Cerrar', style: 'cancel' }
+          ]
+        );
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
+    }
   }
 
   function openAddVehicle() {
@@ -109,30 +211,42 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
     setVehicleModalVisible(true);
   }
 
-  function handleSaveVehicle(payload: any) {
-    if (payload.id) {
-      setVehicles(prev => prev.map(v => v.id === payload.id ? { ...v, ...payload } : v));
-    } else {
-      const newVehicle = { ...payload, id: Date.now().toString() };
-      setVehicles(prev => [...prev, newVehicle]);
-      setSelectedVehicleId(newVehicle.id);
+  async function handleSaveVehicle(payload: any) {
+    try {
+      if (payload.id) {
+        // TODO: Implementar updateVehiculo en la API
+        setVehicles(prev => prev.map(v => v.id_vehiculo === payload.id ? { ...v, ...payload } : v));
+      } else {
+        const newVehicle = await createVehiculo({
+          marca: payload.make,
+          modelo: payload.model,
+          placa: payload.plate,
+          color: payload.color,
+        });
+        setVehicles(prev => [...prev, newVehicle]);
+        setSelectedVehicleId(newVehicle.id_vehiculo);
+      }
+      setVehicleModalVisible(false);
+    } catch (error) {
+      console.error('[ReserveFlow] Error guardando vehículo:', error);
+      Alert.alert('Error', 'No se pudo guardar el vehículo');
     }
-    setVehicleModalVisible(false);
   }
 
-  function handleDeleteVehicle(id: string) {
+  function handleDeleteVehicle(id: number) {
     Alert.alert('Eliminar vehículo', '¿Deseas eliminar este vehículo?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => {
-        setVehicles(prev => prev.filter(v => v.id !== id));
+        // TODO: Llamar a deleteVehiculo de la API
+        setVehicles(prev => prev.filter(v => v.id_vehiculo !== id));
         if (selectedVehicleId === id) {
-          setSelectedVehicleId(vehicles.length > 1 ? vehicles.find(v => v.id !== id)?.id || null : null);
+          setSelectedVehicleId(vehicles.length > 1 ? vehicles.find(v => v.id_vehiculo !== id)?.id_vehiculo || null : null);
         }
       }},
     ]);
   }
 
-  const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId);
+  const selectedVehicle = vehicles.find((v) => v.id_vehiculo === selectedVehicleId);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -170,32 +284,106 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
             </>
           )}
 
-          {/* Step 1: Vehicle */}
+          {/* Step 1: Espacio */}
           {currentStep === 1 && (
             <>
-              <Text style={styles.stepTitle}>Selecciona tu vehículo</Text>
-              {vehicles.map((v) => (
-                <VehicleCard
-                  key={v.id}
-                  id={v.id}
-                  make={v.make + (v.model ? ` • ${v.model}` : '')}
-                  plate={v.plate}
-                  color={v.color}
-                  selected={selectedVehicleId === v.id}
-                  onPress={() => setSelectedVehicleId(v.id)}
-                  onEdit={() => openEditVehicle(v)}
-                  onDelete={() => handleDeleteVehicle(v.id)}
-                />
-              ))}
-              
-              <View style={{ marginTop: SPACING.md }}>
-                <ButtonGradient title="Agregar vehículo" variant="outline" onPress={openAddVehicle} />
-              </View>
+              <Text style={styles.stepTitle}>Selecciona un espacio</Text>
+              {loadingEspacios ? (
+                <View style={{ padding: SPACING.xl, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={[styles.summaryLabel, { marginTop: SPACING.sm }]}>
+                    Cargando espacios disponibles...
+                  </Text>
+                </View>
+              ) : espacios.length === 0 ? (
+                <GlassCard style={{ marginTop: SPACING.sm }}>
+                  <Text style={[styles.summaryLabel, { textAlign: 'center' }]}>
+                    No hay espacios disponibles en este momento
+                  </Text>
+                </GlassCard>
+              ) : (
+                <View style={{ marginTop: SPACING.sm }}>
+                  {espacios.map((espacio) => (
+                    <TouchableOpacity
+                      key={espacio.id_espacio}
+                      style={[
+                        styles.espacioCard,
+                        selectedEspacioId === espacio.id_espacio && styles.espacioCardSelected
+                      ]}
+                      onPress={() => setSelectedEspacioId(espacio.id_espacio)}
+                    >
+                      <View style={styles.espacioIcon}>
+                        <Icon 
+                          name="car-sport" 
+                          size={24} 
+                          color={selectedEspacioId === espacio.id_espacio ? COLORS.primary : COLORS.textMid} 
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[
+                          styles.espacioNumber,
+                          selectedEspacioId === espacio.id_espacio && styles.espacioNumberSelected
+                        ]}>
+                          Espacio {espacio.numero_espacio}
+                        </Text>
+                        <Text style={styles.espacioStatus}>
+                          {espacio.estado === 'disponible' ? 'Disponible ahora' : espacio.estado}
+                        </Text>
+                      </View>
+                      {selectedEspacioId === espacio.id_espacio && (
+                        <Icon name="checkmark-circle" size={24} color={COLORS.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </>
           )}
 
-          {/* Step 2: Payment */}
+          {/* Step 2: Vehicle */}
           {currentStep === 2 && (
+            <>
+              <Text style={styles.stepTitle}>Selecciona tu vehículo</Text>
+              {loadingVehicles ? (
+                <View style={{ padding: SPACING.xl, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={[styles.summaryLabel, { marginTop: SPACING.sm }]}>
+                    Cargando tus vehículos...
+                  </Text>
+                </View>
+              ) : vehicles.length === 0 ? (
+                <GlassCard style={{ marginTop: SPACING.sm }}>
+                  <Text style={[styles.summaryLabel, { textAlign: 'center', marginBottom: SPACING.md }]}>
+                    No tienes vehículos registrados
+                  </Text>
+                  <ButtonGradient title="Agregar primer vehículo" onPress={openAddVehicle} />
+                </GlassCard>
+              ) : (
+                <>
+                  {vehicles.map((v) => (
+                    <VehicleCard
+                      key={v.id_vehiculo}
+                      id={v.id_vehiculo.toString()}
+                      make={v.marca + (v.modelo ? ` • ${v.modelo}` : '')}
+                      plate={v.placa}
+                      color={v.color}
+                      selected={selectedVehicleId === v.id_vehiculo}
+                      onPress={() => setSelectedVehicleId(v.id_vehiculo)}
+                      onEdit={() => openEditVehicle(v)}
+                      onDelete={() => handleDeleteVehicle(v.id_vehiculo)}
+                    />
+                  ))}
+                  
+                  <View style={{ marginTop: SPACING.md }}>
+                    <ButtonGradient title="Agregar vehículo" variant="outline" onPress={openAddVehicle} />
+                  </View>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Step 3: Payment */}
+          {currentStep === 3 && (
             <>
               <Text style={styles.stepTitle}>Confirmar y pagar</Text>
               
@@ -207,6 +395,13 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
                   <Text style={styles.summaryLabel}>Estacionamiento</Text>
                   <Text style={styles.summaryValue}>{parking.title}</Text>
                 </View>
+
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Espacio</Text>
+                  <Text style={styles.summaryValue}>
+                    {espacios.find(e => e.id_espacio === selectedEspacioId)?.numero_espacio || 'N/A'}
+                  </Text>
+                </View>
                 
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Fecha y hora</Text>
@@ -215,13 +410,15 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
                 
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Vehículo</Text>
-                  <Text style={styles.summaryValue}>{selectedVehicle?.plate}</Text>
+                  <Text style={styles.summaryValue}>{selectedVehicle?.placa}</Text>
                 </View>
-                
-                <View style={[styles.summaryRow, styles.totalRow]}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  <Text style={styles.totalValue}>${parking.price?.toFixed(2) || '4.50'}</Text>
-                </View>
+              </GlassCard>
+              
+              <GlassCard style={{ marginTop: SPACING.md, padding: SPACING.md }}>
+                <Text style={{ fontSize: 13, color: COLORS.textMid, lineHeight: 20 }}>
+                  💡 Esta reserva garantiza tu espacio. El pago se realizará al finalizar tu estacionamiento, 
+                  calculado según el tiempo real de uso.
+                </Text>
               </GlassCard>
             </>
           )}
@@ -241,7 +438,9 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
           <View style={styles.modalOverlay}>
             <GlassCard style={styles.confirmModal}>
               <Text style={styles.confirmTitle}>Confirmar reserva</Text>
-              <Text style={styles.confirmText}>¿Proceder con el pago de ${parking.price?.toFixed(2) || '4.50'}?</Text>
+              <Text style={styles.confirmText}>
+                ¿Confirmar la reserva del espacio? El pago se realizará al salir del estacionamiento.
+              </Text>
               
               <View style={styles.confirmButtons}>
                 <ButtonGradient
@@ -251,7 +450,7 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
                   style={{ flex: 1, marginRight: SPACING.sm }}
                 />
                 <ButtonGradient
-                  title={processing ? 'Procesando...' : 'Pagar'}
+                  title={processing ? 'Procesando...' : 'Confirmar'}
                   onPress={handleConfirmReservation}
                   style={{ flex: 1 }}
                 />
@@ -275,19 +474,57 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   topBar: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg },
   topButton: { padding: 8 },
-  topTitle: { fontSize: TYPE.title, fontWeight: '700', color: COLORS.textDark },
-  stepTitle: { fontSize: TYPE.title, fontWeight: '700', color: COLORS.textDark },
-  summaryTitle: { fontSize: TYPE.subtitle, fontWeight: '700', color: COLORS.textDark, marginBottom: SPACING.sm },
+  topTitle: { fontSize: 22, fontWeight: '700', color: COLORS.textDark },
+  stepTitle: { fontSize: 22, fontWeight: '700', color: COLORS.textDark },
+  summaryTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textDark, marginBottom: SPACING.sm },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: SPACING.xs },
   summaryLabel: { color: COLORS.textMid },
   summaryValue: { color: COLORS.textDark, fontWeight: '600' },
   totalRow: { marginTop: SPACING.sm, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)' },
   totalLabel: { color: COLORS.textDark, fontWeight: '700' },
-  totalValue: { color: COLORS.textDark, fontWeight: '700', fontSize: TYPE.subtitle },
+  totalValue: { color: COLORS.textDark, fontWeight: '700', fontSize: 16 },
+  // Estilos para tarjetas de espacios
+  espacioCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  espacioCardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(102,126,234,0.05)',
+  },
+  espacioIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: 'rgba(102,126,234,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.md,
+  },
+  espacioNumber: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textDark,
+  },
+  espacioNumberSelected: {
+    color: COLORS.primary,
+  },
+  espacioStatus: {
+    fontSize: 13,
+    color: COLORS.textMid,
+    marginTop: 2,
+  },
+  // Estilos de modal
   bottomCTA: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, backgroundColor: COLORS.surface },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: SPACING.lg },
   confirmModal: { padding: SPACING.lg },
-  confirmTitle: { fontSize: TYPE.title, fontWeight: '700', color: COLORS.textDark, textAlign: 'center' },
+  confirmTitle: { fontSize: 22, fontWeight: '700', color: COLORS.textDark, textAlign: 'center' },
   confirmText: { color: COLORS.textMid, textAlign: 'center', marginTop: SPACING.sm },
   confirmButtons: { flexDirection: 'row', marginTop: SPACING.lg },
 });

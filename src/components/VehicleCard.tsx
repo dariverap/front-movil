@@ -91,12 +91,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   make: {
-    fontSize: TYPE.subtitle,
+    fontSize: 16,
     color: COLORS.textDark,
     fontWeight: '600',
   },
   plate: {
-    fontSize: TYPE.body,
+    fontSize: 15,
     color: COLORS.textMid,
   },
   iconButton: {

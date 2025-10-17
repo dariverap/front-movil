@@ -66,6 +66,7 @@ export default function HomeScreen({ navigation }: any) {
             title="📋 Mis reservas" 
             style={[styles.primaryButton, { marginTop: SPACING.md }]}
             variant="outline"
+            onPress={() => navigation.navigate('MyReservations' as never)}
           />
           <ButtonGradient 
             title="👤 Mi perfil" 
@@ -100,7 +101,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
   welcomeTitle: {
-    fontSize: TYPE.h3,
+    fontSize: 24,
     fontWeight: '800',
     color: COLORS.textDark,
     marginBottom: SPACING.sm,

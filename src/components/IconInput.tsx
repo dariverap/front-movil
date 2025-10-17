@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: TYPE.body,
+    fontSize: 15,
     color: COLORS.textDark,
   },
 });

@@ -105,6 +105,17 @@ export interface Parking {
   longitud: number;
   capacidad_total: number;
   id_admin?: string;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  motivo_baja?: string | null;
+}
+
+export interface Tarifa {
+  id_tarifa: number;
+  id_parking: number;
+  tipo: string; // 'hora', 'dia', 'mes', etc.
+  monto: number;
+  condiciones?: string | null;
 }
 
 export const getParkings = async (): Promise<Parking[]> => {
@@ -121,6 +132,133 @@ export const getNearbyParkings = async (lat: number, lng: number, radius: number
 
 export const getParkingById = async (id: number): Promise<Parking> => {
   const response = await api.get(`/parking/${id}`);
+  return response.data.data || response.data;
+};
+
+export const getTarifasByParkingId = async (parkingId: number): Promise<Tarifa[]> => {
+  const response = await api.get(`/parking/${parkingId}/tarifas`);
+  return response.data.data || response.data;
+};
+
+// ============== API de Espacios ==============
+export interface Espacio {
+  id_espacio: number;
+  id_parking: number;
+  numero_espacio: string;
+  estado: 'disponible' | 'ocupado' | 'reservado' | 'mantenimiento';
+}
+
+export const getEspaciosByParkingId = async (parkingId: number): Promise<Espacio[]> => {
+  const response = await api.get(`/espacios/parking/${parkingId}`);
+  return response.data.data || response.data;
+};
+
+export const getEspaciosDisponibles = async (parkingId: number): Promise<Espacio[]> => {
+  const response = await api.get(`/espacios/parking/${parkingId}/disponibles`);
+  return response.data.data || response.data;
+};
+
+// ============== API de Reservas ==============
+export interface Reserva {
+  id_reserva: number;
+  id_usuario: string;
+  id_espacio: number;
+  id_vehiculo?: number;
+  fecha_reserva: string;
+  hora_inicio: string;
+  hora_fin: string;
+  estado: 'activa' | 'cancelada' | 'completada';
+  espacio?: {
+    id_espacio: number;
+    numero_espacio: string;
+    estado: string;
+    parking: {
+      id_parking: number;
+      nombre: string;
+      direccion: string;
+      latitud: number;
+      longitud: number;
+    };
+  };
+  vehiculo?: {
+    id_vehiculo: number;
+    placa: string;
+    marca: string;
+    modelo: string;
+    color: string;
+  };
+}
+
+export const createReserva = async (data: {
+  id_espacio: number;
+  id_vehiculo: number;
+  fecha_inicio: string; // ISO string
+  fecha_fin: string; // ISO string
+}): Promise<Reserva> => {
+  const response = await api.post('/reservas', data);
+  return response.data.data || response.data;
+};
+
+export const getMisReservas = async (): Promise<Reserva[]> => {
+  const response = await api.get('/reservas/mis-reservas');
+  return response.data.data || response.data;
+};
+
+export const cancelarReserva = async (id: number): Promise<void> => {
+  console.log(`[API] Cancelando reserva ${id}...`);
+  const response = await api.patch(`/reservas/${id}/estado`, { estado: 'cancelada' });
+  console.log('[API] Respuesta cancelación:', response.data);
+};
+
+export const verificarDisponibilidad = async (data: {
+  id_espacio: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+}): Promise<{ disponible: boolean }> => {
+  const response = await api.post('/reservas/verificar-disponibilidad', data);
+  return response.data;
+};
+
+// ============== API de Ocupaciones ==============
+export interface Ocupacion {
+  id_ocupacion: number;
+  id_reserva?: number;
+  id_usuario: string;
+  id_espacio: number;
+  id_vehiculo?: number;
+  hora_entrada: string;
+  hora_salida?: string | null;
+  costo_total?: number | null;
+  // Datos relacionados (de las vistas)
+  cliente?: string;
+  vehiculo_placa?: string;
+  parking?: string;
+  numero_espacio?: string;
+  horas_transcurridas?: number;
+  costo_actual?: number;
+  tarifa_hora?: number;
+}
+
+export const marcarEntrada = async (id_reserva: number): Promise<{ id_ocupacion: number }> => {
+  const response = await api.post('/ocupaciones/marcar-entrada', { id_reserva });
+  return response.data.data || response.data;
+};
+
+export const marcarSalida = async (id_ocupacion: number): Promise<{ 
+  costo_calculado: number; 
+  tiempo_total_horas: number;
+}> => {
+  const response = await api.post('/ocupaciones/marcar-salida', { id_ocupacion });
+  return response.data.data || response.data;
+};
+
+export const getOcupacionActiva = async (): Promise<Ocupacion | null> => {
+  const response = await api.get('/ocupaciones/activa');
+  return response.data.data || response.data;
+};
+
+export const getHistorialOcupaciones = async (): Promise<Ocupacion[]> => {
+  const response = await api.get('/ocupaciones/historial');
   return response.data.data || response.data;
 };
 

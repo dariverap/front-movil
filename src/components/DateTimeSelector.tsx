@@ -62,11 +62,11 @@ const styles = StyleSheet.create({
   },
   label: {
     color: COLORS.textMid,
-    fontSize: TYPE.caption,
+    fontSize: 13,
   },
   value: {
     color: COLORS.textDark,
-    fontSize: TYPE.body,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

@@ -78,7 +78,7 @@ export default function VehicleFormModal({ visible, onClose, onSave, existing }:
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.5)', justifyContent: 'flex-end' },
   card: { backgroundColor: '#fff', padding: SPACING.lg, borderTopLeftRadius: RADIUS.large, borderTopRightRadius: RADIUS.large },
-  title: { fontSize: TYPE.title, fontWeight: '700', color: COLORS.textDark },
+  title: { fontSize: 22, fontWeight: '700', color: COLORS.textDark },
   label: { marginTop: SPACING.sm, color: COLORS.textMid },
   input: { marginTop: SPACING.xs, borderWidth: 1, borderColor: 'rgba(0,0,0,0.05)', padding: SPACING.sm, borderRadius: 8 },
 });

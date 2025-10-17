@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: COLORS.textMid,
-    fontSize: TYPE.caption,
+    fontSize: 13,
     textAlign: 'center',
   },
   labelActive: {

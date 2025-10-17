@@ -150,23 +150,23 @@ export default function HeaderMenu({ title, subtitle, navigation, showNotificati
 
                 <TouchableOpacity 
                   style={styles.menuItem}
-                  onPress={() => {/* TODO: Mis reservas */}}
+                  onPress={() => navigateTo('MyReservations')}
                 >
-                  <Icon name="calendar-outline" size={24} color={COLORS.textMid} />
+                  <Icon name="calendar-outline" size={24} color={COLORS.primaryEnd} />
                   <Text style={styles.menuItemText}>Mis Reservas</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   style={styles.menuItem}
-                  onPress={() => {/* TODO: Historial */}}
+                  onPress={() => navigateTo('MyReservations')}
                 >
-                  <Icon name="time-outline" size={24} color={COLORS.textMid} />
+                  <Icon name="time-outline" size={24} color={COLORS.primaryEnd} />
                   <Text style={styles.menuItemText}>Historial</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   style={styles.menuItem}
-                  onPress={() => {/* TODO: Configuración */}}
+                  onPress={() => navigateTo('Profile')}
                 >
                   <Icon name="settings-outline" size={24} color={COLORS.textMid} />
                   <Text style={styles.menuItemText}>Configuración</Text>
@@ -176,7 +176,7 @@ export default function HeaderMenu({ title, subtitle, navigation, showNotificati
 
                 <TouchableOpacity 
                   style={styles.menuItem}
-                  onPress={() => {/* TODO: Ayuda */}}
+                  onPress={() => {/* TODO: Ayuda - Puede ser una pantalla de FAQs */}}
                 >
                   <Icon name="help-circle-outline" size={24} color={COLORS.textMid} />
                   <Text style={styles.menuItemText}>Ayuda</Text>
