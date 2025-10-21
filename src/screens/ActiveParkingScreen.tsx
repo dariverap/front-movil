@@ -15,13 +15,14 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import ButtonGradient from '../components/ButtonGradient';
 import GlassCard from '../components/GlassCard';
 import { COLORS, SPACING, TYPE } from '../lib/theme';
-import { getOcupacionActiva, marcarSalida } from '../lib/api';
+import { getOcupacionActiva, marcarSalida, solicitarSalida } from '../lib/api';
 
 export default function ActiveParkingScreen({ navigation, route }: any) {
   const [ocupacion, setOcupacion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [salidaSolicitada, setSalidaSolicitada] = useState(false);
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState(0);
   const [costoActual, setCostoActual] = useState(0);
 
@@ -50,8 +51,19 @@ export default function ActiveParkingScreen({ navigation, route }: any) {
         return;
       }
 
-      setOcupacion(data);
-      calculateTiempoYCosto(data);
+      // En algunos casos el cliente puede recibir {success, data}
+      const payload: any = (data && (data as any).success !== undefined && (data as any).data !== undefined)
+        ? (data as any).data
+        : data;
+
+      setOcupacion(payload);
+      if (payload) {
+        calculateTiempoYCosto(payload);
+        if (payload.hora_salida_solicitada) {
+          setSalidaSolicitada(true);
+        }
+      }
+      console.log('[ActiveParking] Ocupación cargada:', JSON.stringify(payload ?? data, null, 2));
     } catch (error) {
       console.error('[ActiveParking] Error cargando ocupación:', error);
       Alert.alert('Error', 'No se pudo cargar la información del estacionamiento.');
@@ -120,6 +132,52 @@ export default function ActiveParkingScreen({ navigation, route }: any) {
               Alert.alert(
                 'Error',
                 error.response?.data?.message || 'No se pudo registrar tu salida. Intenta nuevamente.'
+              );
+            } finally {
+              setProcessing(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSolicitarSalida = () => {
+    if (!ocupacion || !ocupacion.id_ocupacion) {
+      Alert.alert('Error', 'No se pudo obtener la información de la ocupación. Intenta recargar la pantalla.');
+      return;
+    }
+
+    Alert.alert(
+      '¿Solicitar salida?',
+      `Monto a pagar: S/ ${costoActual.toFixed(2)}\nTiempo: ${formatHoras(tiempoTranscurrido)}\n\nDirígete a caja para validar el pago.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Solicitar salida',
+          onPress: async () => {
+            try {
+              setProcessing(true);
+              console.log('[ActiveParking] Solicitando salida para ocupación:', ocupacion.id_ocupacion);
+              const resultado = await solicitarSalida(ocupacion.id_ocupacion);
+              setSalidaSolicitada(true);
+              // Actualizar ocupacion en memoria para reflejar la bandera
+              setOcupacion((prev: any) => prev ? { ...prev, hora_salida_solicitada: new Date().toISOString() } : prev);
+              Alert.alert(
+                'Salida solicitada',
+                `Monto: S/ ${resultado.monto.toFixed(2)}\nTiempo: ${Math.floor(resultado.tiempo_minutos / 60)}h ${resultado.tiempo_minutos % 60}m\n\nDirígete a caja para validar el pago y poder salir.`,
+                [
+                  {
+                    text: 'Entendido',
+                    onPress: () => navigation.navigate('Map'),
+                  },
+                ]
+              );
+            } catch (error: any) {
+              console.error('[ActiveParking] Error al solicitar salida:', error);
+              Alert.alert(
+                'Error',
+                error.response?.data?.message || 'No se pudo solicitar la salida. Intenta nuevamente.'
               );
             } finally {
               setProcessing(false);
@@ -236,7 +294,14 @@ export default function ActiveParkingScreen({ navigation, route }: any) {
             <Icon name="car-outline" size={20} color={COLORS.textSecondary} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Vehículo</Text>
-              <Text style={styles.detailValue}>{String(ocupacion.vehiculo_placa || 'N/A')}</Text>
+              <Text style={styles.detailValue}>
+                {ocupacion.vehiculo_placa || 'N/A'}
+              </Text>
+              {(ocupacion.vehiculo_marca || ocupacion.vehiculo_modelo) && (
+                <Text style={styles.detailSubtext}>
+                  {ocupacion.vehiculo_marca} {ocupacion.vehiculo_modelo}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -255,20 +320,43 @@ export default function ActiveParkingScreen({ navigation, route }: any) {
         <GlassCard style={styles.infoCard}>
           <View style={styles.infoHeader}>
             <Icon name="information-circle-outline" size={20} color={COLORS.info} />
-            <Text style={styles.infoTitle}>Recordatorio</Text>
+            <Text style={styles.infoTitle}>Información importante</Text>
           </View>
           <Text style={styles.infoText}>
-            El tiempo y costo se actualizan automáticamente cada minuto. Al marcar tu salida, se calculará el costo final basado en el tiempo real de uso.
+            {ocupacion.estado === 'finalizada' 
+              ? 'Tu reserva ha sido completada. Puedes revisar los detalles en tu historial.'
+              : 'Estás estacionado en el parking. El personal se encargará de procesar tu salida cuando estés listo para irte.'}
           </Text>
         </GlassCard>
 
-        {/* Botón de salida */}
+        {/* Botón de salida - COMENTADO (Ahora el admin procesa la salida desde web) */}
+        {/* 
         <ButtonGradient
-          title={processing ? 'Procesando...' : 'Marcar salida'}
-          onPress={handleMarcarSalida}
-          disabled={processing}
+          title={processing ? 'Procesando...' : 'Solicitar salida'}
+          onPress={handleSolicitarSalida}
+          disabled={processing || salidaSolicitada}
           style={styles.exitButton}
         />
+        */}
+
+        {/* Mensaje de estado */}
+        <GlassCard style={[styles.infoCard, { backgroundColor: ocupacion.estado === 'finalizada' ? COLORS.successLight : COLORS.infoLight }]}>
+          <View style={styles.infoHeader}>
+            <Icon 
+              name={ocupacion.estado === 'finalizada' ? 'checkmark-circle-outline' : 'time-outline'} 
+              size={24} 
+              color={ocupacion.estado === 'finalizada' ? COLORS.success : COLORS.info} 
+            />
+            <Text style={[styles.infoTitle, { color: ocupacion.estado === 'finalizada' ? COLORS.success : COLORS.info }]}>
+              {ocupacion.estado === 'finalizada' ? 'Reserva completada' : 'En el parking'}
+            </Text>
+          </View>
+          <Text style={styles.infoText}>
+            {ocupacion.estado === 'finalizada'
+              ? 'Puedes salir del parking. Gracias por usar nuestro servicio.'
+              : 'Cuando estés listo para salir, dirígete a la salida. El personal procesará tu pago.'}
+          </Text>
+        </GlassCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -398,6 +486,11 @@ const styles = StyleSheet.create({
     ...TYPE.body,
     color: COLORS.text,
     fontWeight: '600',
+  },
+  detailSubtext: {
+    ...TYPE.small,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   infoCard: {
     marginBottom: SPACING.xl,

@@ -128,6 +128,8 @@ export default function ParkingDetailScreen({ navigation, route }: any) {
               </View>
             </GlassCard>
 
+            {/* Características - COMENTADO (mockup) */}
+            {/* 
             <Text style={styles.sectionTitle}>Características</Text>
             <View style={styles.featuresRow}>
               <GlassCard style={{ flex: 1, marginRight: SPACING.sm }}>
@@ -140,6 +142,7 @@ export default function ParkingDetailScreen({ navigation, route }: any) {
                 <Text style={styles.featureText}>Carga EV</Text>
               </GlassCard>
             </View>
+            */}
 
             {/* Tarifas disponibles */}
             <Text style={[styles.sectionTitle, { marginTop: SPACING.md }]}>Tarifas</Text>

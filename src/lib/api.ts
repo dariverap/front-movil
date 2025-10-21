@@ -167,7 +167,10 @@ export interface Reserva {
   fecha_reserva: string;
   hora_inicio: string;
   hora_fin: string;
-  estado: 'activa' | 'cancelada' | 'completada';
+  estado: 'pendiente' | 'confirmada' | 'activa' | 'cancelada' | 'completada' | 'expirada';
+  estado_visible?: 'pendiente' | 'confirmada' | 'activa' | 'cancelada' | 'completada' | 'expirada';
+  tiene_ocupacion_activa?: boolean;
+  puede_cancelar?: boolean;
   espacio?: {
     id_espacio: number;
     numero_espacio: string;
@@ -226,12 +229,19 @@ export interface Ocupacion {
   id_usuario: string;
   id_espacio: number;
   id_vehiculo?: number;
+  id_parking?: number;
   hora_entrada: string;
   hora_salida?: string | null;
+  hora_salida_solicitada?: string | null;
+  hora_salida_confirmada?: string | null;
   costo_total?: number | null;
+  monto_calculado?: number | null;
+  tiempo_total_minutos?: number | null;
   // Datos relacionados (de las vistas)
   cliente?: string;
   vehiculo_placa?: string;
+  vehiculo_marca?: string;
+  vehiculo_modelo?: string;
   parking?: string;
   numero_espacio?: string;
   horas_transcurridas?: number;
@@ -252,9 +262,22 @@ export const marcarSalida = async (id_ocupacion: number): Promise<{
   return response.data.data || response.data;
 };
 
+export const solicitarSalida = async (id_ocupacion: number): Promise<{
+  monto: number;
+  tiempo_minutos: number;
+  id_pago: number;
+}> => {
+  const response = await api.post(`/pagos/ocupaciones/${id_ocupacion}/solicitar-salida`);
+  return response.data.data || response.data;
+};
+
 export const getOcupacionActiva = async (): Promise<Ocupacion | null> => {
   const response = await api.get('/ocupaciones/activa');
-  return response.data.data || response.data;
+  // Backend devuelve { success, data }
+  if (response?.data && 'data' in response.data) {
+    return response.data.data || null;
+  }
+  return response.data || null;
 };
 
 export const getHistorialOcupaciones = async (): Promise<Ocupacion[]> => {

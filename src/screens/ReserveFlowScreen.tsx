@@ -48,7 +48,7 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<any>(null);
 
-  const steps = ['Fecha', 'Espacio', 'Vehículo', 'Pago'];
+  const steps = ['Fecha', 'Espacio', 'Vehículo', 'Confirmación'];
 
   useEffect(() => {
     loadVehicles();
@@ -153,16 +153,16 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
       setProcessing(true);
       
       // Crear fechas ISO desde los datos seleccionados
-      // TODO: Convertir selectedDate y selectedTime a fechas ISO reales
+      // Para testing: reserva inmediata (ahora mismo)
       const now = new Date();
-      const fecha_inicio = new Date(now.getTime() + 60 * 60 * 1000).toISOString(); // 1 hora desde ahora
-      const fecha_fin = new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString(); // 3 horas desde ahora
+      const fecha_inicio = now; // Ahora mismo (para testing)
+      const fecha_fin = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 horas desde ahora
 
       const reservaCreada = await createReserva({
         id_espacio: selectedEspacioId,
         id_vehiculo: selectedVehicleId, // ✅ Ya incluido desde antes
-        fecha_inicio,
-        fecha_fin,
+        fecha_inicio: fecha_inicio.toISOString(),
+        fecha_fin: fecha_fin.toISOString(),
       });
 
       setProcessing(false);
@@ -272,14 +272,22 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
           {/* Step 0: Date & Time */}
           {currentStep === 0 && (
             <>
-              <Text style={styles.stepTitle}>¿Cuándo necesitas el estacionamiento?</Text>
+              <Text style={styles.stepTitle}>Reservando para ahora</Text>
               <GlassCard style={{ marginTop: SPACING.sm }}>
-                <DateTimeSelector 
-                  dateLabel={selectedDate || 'Seleccionar fecha'}
-                  timeLabel={selectedTime || 'Seleccionar hora'}
-                  onSelectDate={() => Alert.alert('Selector de fecha', 'Aquí iría un DatePicker')}
-                  onSelectTime={() => Alert.alert('Selector de hora', 'Aquí iría un TimePicker')}
-                />
+                <View style={{ padding: SPACING.md }}>
+                  <Text style={[styles.summaryLabel, { textAlign: 'center', fontSize: 15 }]}>
+                    Tu reserva será efectiva inmediatamente
+                  </Text>
+                  <Text style={[styles.summaryValue, { textAlign: 'center', marginTop: SPACING.xs }]}>
+                    {new Date().toLocaleString('es-PE', { 
+                      day: '2-digit', 
+                      month: 'long', 
+                      year: 'numeric',
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </Text>
+                </View>
               </GlassCard>
             </>
           )}
@@ -405,7 +413,15 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
                 
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Fecha y hora</Text>
-                  <Text style={styles.summaryValue}>{selectedDate}, {selectedTime}</Text>
+                  <Text style={styles.summaryValue}>
+                    {new Date().toLocaleString('es-PE', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </Text>
                 </View>
                 
                 <View style={styles.summaryRow}>
@@ -416,8 +432,8 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
               
               <GlassCard style={{ marginTop: SPACING.md, padding: SPACING.md }}>
                 <Text style={{ fontSize: 13, color: COLORS.textMid, lineHeight: 20 }}>
-                  💡 Esta reserva garantiza tu espacio. El pago se realizará al finalizar tu estacionamiento, 
-                  calculado según el tiempo real de uso.
+                  ℹ️ Esta reserva garantiza tu espacio de forma gratuita. El pago se realizará cuando salgas del estacionamiento, 
+                  según el tiempo real que uses el espacio.
                 </Text>
               </GlassCard>
             </>
@@ -439,7 +455,7 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
             <GlassCard style={styles.confirmModal}>
               <Text style={styles.confirmTitle}>Confirmar reserva</Text>
               <Text style={styles.confirmText}>
-                ¿Confirmar la reserva del espacio? El pago se realizará al salir del estacionamiento.
+                ¿Deseas confirmar esta reserva? Tu espacio quedará apartado y pagarás al salir del estacionamiento.
               </Text>
               
               <View style={styles.confirmButtons}>

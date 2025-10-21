@@ -74,9 +74,8 @@ export default function MyReservationsScreen() {
   };
 
   const handleVerDetalle = (reserva: Reserva) => {
-    if (reserva.estado === 'activa') {
-      navigation.navigate('ReservationConfirmed' as never, { reserva } as never);
-    }
+    // Navegar con los datos de la reserva para mostrar los detalles
+    navigation.navigate('ReservationConfirmed' as never, { reserva } as never);
   };
 
   const formatFecha = (fecha: string) => {
@@ -99,6 +98,9 @@ export default function MyReservationsScreen() {
       case 'activa': return '#10b981';
       case 'completada': return '#6b7280';
       case 'cancelada': return '#ef4444';
+      case 'pendiente': return '#3b82f6';
+      case 'confirmada': return '#8b5cf6';
+      case 'expirada': return '#f59e0b';
       default: return COLORS.textMid;
     }
   };
@@ -108,12 +110,16 @@ export default function MyReservationsScreen() {
       case 'activa': return 'Activa';
       case 'completada': return 'Completada';
       case 'cancelada': return 'Cancelada';
+      case 'pendiente': return 'Pendiente';
+      case 'confirmada': return 'Confirmada';
+      case 'expirada': return 'Expirada';
       default: return estado;
     }
   };
 
-  const reservaActiva = reservas.find(r => r.estado === 'activa');
-  const historial = reservas.filter(r => r.estado !== 'activa');
+  const getEstadoBase = (r: Reserva) => r.estado_visible || r.estado;
+  const reservaActiva = reservas.find(r => getEstadoBase(r) === 'activa' || ['pendiente','confirmada'].includes(getEstadoBase(r)));
+  const historial = reservas.filter(r => !(['activa','pendiente','confirmada'].includes(getEstadoBase(r))));
 
   if (loading) {
     return (
@@ -160,9 +166,9 @@ export default function MyReservationsScreen() {
                     {reservaActiva.espacio?.parking.nombre}
                   </Text>
                 </View>
-                <View style={[styles.badge, { backgroundColor: getEstadoColor('activa') + '20' }]}>
-                  <Text style={[styles.badgeText, { color: getEstadoColor('activa') }]}>
-                    Activa
+                <View style={[styles.badge, { backgroundColor: getEstadoColor(getEstadoBase(reservaActiva)) + '20' }]}>
+                  <Text style={[styles.badgeText, { color: getEstadoColor(getEstadoBase(reservaActiva)) }]}>
+                    {getEstadoTexto(getEstadoBase(reservaActiva))}
                   </Text>
                 </View>
               </View>
@@ -191,19 +197,32 @@ export default function MyReservationsScreen() {
               </View>
 
               <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={[styles.button, styles.buttonPrimary]}
-                  onPress={() => handleVerDetalle(reservaActiva)}
-                >
-                  <Text style={styles.buttonTextPrimary}>Ver Detalles</Text>
-                </TouchableOpacity>
+                {getEstadoBase(reservaActiva) === 'activa' && reservaActiva.tiene_ocupacion_activa ? (
+                  <TouchableOpacity
+                    style={[styles.button, styles.buttonSuccess, { flex: 1 }]}
+                    onPress={() => navigation.navigate('ActiveParking')}
+                  >
+                    <Icon name="time" size={16} color={COLORS.white} style={{ marginRight: 6 }} />
+                    <Text style={styles.buttonTextPrimary}>Ver estacionamiento activo</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.button, styles.buttonPrimary]}
+                      onPress={() => handleVerDetalle(reservaActiva)}
+                    >
+                      <Text style={styles.buttonTextPrimary}>Ver Detalles</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.button, styles.buttonOutline]}
-                  onPress={() => handleCancelar(reservaActiva)}
-                >
-                  <Text style={styles.buttonTextOutline}>Cancelar</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.button, styles.buttonOutline, { opacity: reservaActiva.puede_cancelar ? 1 : 0.4 }]}
+                      onPress={() => handleCancelar(reservaActiva)}
+                      disabled={!reservaActiva.puede_cancelar}
+                    >
+                      <Text style={styles.buttonTextOutline}>Cancelar</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             </GlassCard>
           </View>
@@ -222,16 +241,16 @@ export default function MyReservationsScreen() {
                       {reserva.espacio?.parking.nombre}
                     </Text>
                   </View>
-                  <View style={[styles.badge, { backgroundColor: getEstadoColor(reserva.estado) + '20' }]}>
-                    <Text style={[styles.badgeText, { color: getEstadoColor(reserva.estado) }]}>
-                      {getEstadoTexto(reserva.estado)}
+                  <View style={[styles.badge, { backgroundColor: getEstadoColor(getEstadoBase(reserva)) + '20' }]}>
+                    <Text style={[styles.badgeText, { color: getEstadoColor(getEstadoBase(reserva)) }]}>
+                      {getEstadoTexto(getEstadoBase(reserva))}
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.cardBody}>
                   <Text style={styles.historyDate}>
-                    {formatFecha(reserva.fecha_reserva)}
+                    {formatFecha(reserva.hora_inicio)}
                   </Text>
                   <Text style={styles.historyInfo}>
                     Espacio {reserva.espacio?.numero_espacio} • {reserva.vehiculo?.placa}
@@ -317,6 +336,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonPrimary: { backgroundColor: COLORS.primary },
+  buttonSuccess: { 
+    backgroundColor: COLORS.success,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   buttonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,

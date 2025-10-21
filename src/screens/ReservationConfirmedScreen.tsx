@@ -17,7 +17,18 @@ import { COLORS, SPACING, TYPE } from '../lib/theme';
 import { marcarEntrada } from '../lib/api';
 
 export default function ReservationConfirmedScreen({ navigation, route }: any) {
-  const { reserva, parking, espacio, vehiculo } = route?.params || {};
+  // Primero intentar usar los parámetros directos (desde ReserveFlow)
+  // Si no existen, usar los datos anidados en reserva (desde MyReservations)
+  const paramsReserva = route?.params?.reserva;
+  const paramsParking = route?.params?.parking || paramsReserva?.espacio?.parking;
+  const paramsEspacio = route?.params?.espacio || paramsReserva?.espacio;
+  const paramsVehiculo = route?.params?.vehiculo || paramsReserva?.vehiculo;
+  
+  const reserva = paramsReserva;
+  const parking = paramsParking;
+  const espacio = paramsEspacio;
+  const vehiculo = paramsVehiculo;
+  
   const [processing, setProcessing] = useState(false);
 
   if (!reserva) {
@@ -172,31 +183,31 @@ export default function ReservationConfirmedScreen({ navigation, route }: any) {
         {/* Información importante */}
         <GlassCard style={styles.infoCard}>
           <View style={styles.infoHeader}>
-            <Icon name="information-circle-outline" size={24} color={COLORS.warning} />
-            <Text style={styles.infoTitle}>Importante</Text>
+            <Icon name="information-circle-outline" size={24} color={COLORS.success} />
+            <Text style={styles.infoTitle}>¿Qué sigue?</Text>
           </View>
           <Text style={styles.infoText}>
-            • Cuando llegues físicamente al parking, presiona "He llegado" para iniciar el conteo de tiempo.{'\n\n'}
+            • El personal del parking confirmará tu entrada cuando llegues.{'\n\n'}
             • El costo se calculará según el tiempo real de uso.{'\n\n'}
-            • Recuerda marcar tu salida al finalizar.
+            • Al salir, pagarás directamente en el parking.
           </Text>
         </GlassCard>
 
         {/* Botones de acción */}
         <View style={styles.actions}>
           <ButtonGradient
-            title={processing ? 'Registrando...' : 'He llegado al parking'}
-            onPress={handleMarcarLlegada}
+            title="Volver al mapa"
+            onPress={() => navigation.navigate('Map')}
             disabled={processing}
             style={styles.primaryButton}
           />
 
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => navigation.navigate('Map')}
+            onPress={() => navigation.navigate('MyReservations')}
             disabled={processing}
           >
-            <Text style={styles.secondaryButtonText}>Ir al mapa</Text>
+            <Text style={styles.secondaryButtonText}>Ver mis reservas</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
