@@ -11,6 +11,7 @@ import ReserveFlowScreen from './src/screens/ReserveFlowScreen';
 import ReservationConfirmedScreen from './src/screens/ReservationConfirmedScreen';
 import ActiveParkingScreen from './src/screens/ActiveParkingScreen';
 import MyReservationsScreen from './src/screens/MyReservationsScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { AuthProvider } from './src/hooks/useAuth';
@@ -33,6 +34,7 @@ function App(): React.JSX.Element {
             <Stack.Screen name="ReservationConfirmed" component={ReservationConfirmedScreen} />
             <Stack.Screen name="ActiveParking" component={ActiveParkingScreen} />
             <Stack.Screen name="MyReservations" component={MyReservationsScreen} />
+            <Stack.Screen name="History" component={HistoryScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </AuthProvider>

@@ -6,6 +6,8 @@ import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
 // Leer API_BASE_URL desde @env (.env via react-native-dotenv) o usar fallback
 const API_BASE_URL = ENV_API_BASE_URL || 'http://10.0.2.2:3000/api';
 
+console.log('[API] Configuración inicial - Base URL:', API_BASE_URL);
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
@@ -18,31 +20,47 @@ const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
+      console.log('[API] Request:', config.method?.toUpperCase(), config.url);
       const token = await AsyncStorage.getItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log('[API] Token agregado a headers');
+      } else {
+        console.warn('[API] No hay token disponible');
       }
     } catch (error) {
-      console.error('Error al obtener token:', error);
+      console.error('[API] Error al obtener token:', error);
     }
     return config;
   },
   (error) => {
+    console.error('[API] Error en interceptor request:', error);
     return Promise.reject(error);
   }
 );
 
 // Interceptor para manejar respuestas y errores
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('[API] Response:', response.status, response.config.url);
+    return response;
+  },
   async (error) => {
+    console.error('[API] Error Response:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data
+    });
+    
     if (error.response?.status === 401) {
       // Token inválido o expirado - limpiar sesión
+      console.warn('[API] Token inválido, limpiando sesión');
       try {
         await AsyncStorage.removeItem('token');
         await AsyncStorage.removeItem('user');
       } catch (e) {
-        console.error('Error al limpiar sesión:', e);
+        console.error('[API] Error al limpiar sesión:', e);
       }
     }
     return Promise.reject(error);
@@ -283,6 +301,93 @@ export const getOcupacionActiva = async (): Promise<Ocupacion | null> => {
 export const getHistorialOcupaciones = async (): Promise<Ocupacion[]> => {
   const response = await api.get('/ocupaciones/historial');
   return response.data.data || response.data;
+};
+
+// ============== API de Historial Unificado ==============
+export interface HistorialOperacion {
+  id_operacion: string;
+  id_reserva?: number;
+  id_ocupacion?: number;
+  tipo: 'reserva' | 'walk_in';
+  estado_final: string;
+  usuario: {
+    id_usuario: string;
+    nombre: string;
+    apellido: string;
+    email: string;
+    telefono?: string;
+  } | null;
+  vehiculo: {
+    id_vehiculo: number;
+    placa: string;
+    marca?: string;
+    modelo?: string;
+    color?: string;
+  } | null;
+  espacio: {
+    id_espacio: number;
+    numero_espacio: string;
+    id_parking: number;
+  } | null;
+  fechas: {
+    creada_at: string | null;
+    hora_programada_inicio: string | null;
+    hora_programada_fin: string | null;
+    entrada_at: string | null;
+    salida_at: string | null;
+    pago_at: string | null;
+  };
+  duracion_minutos: number | null;
+  pago: {
+    id_pago: number;
+    monto: number;
+    estado: string;
+    metodo: string | null;
+    metodo_tipo: string | null;
+    comprobante: {
+      tipo: string | null;
+      serie: string | null;
+      numero: string | null;
+      emitido_en: string | null;
+    };
+  } | null;
+}
+
+export const getHistorialUsuario = async (
+  userId: string,
+  filters?: {
+    estado?: string;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    q?: string;
+    limit?: number;
+  }
+): Promise<HistorialOperacion[]> => {
+  console.log('[API] getHistorialUsuario - userId:', userId);
+  console.log('[API] getHistorialUsuario - filters:', filters);
+  
+  const params = new URLSearchParams();
+  if (filters?.estado) params.append('estado', filters.estado);
+  if (filters?.fecha_desde) params.append('fecha_desde', filters.fecha_desde);
+  if (filters?.fecha_hasta) params.append('fecha_hasta', filters.fecha_hasta);
+  if (filters?.q) params.append('q', filters.q);
+  if (filters?.limit) params.append('limit', String(filters.limit));
+
+  const query = params.toString();
+  const url = `/usuarios/${userId}/historial${query ? `?${query}` : ''}`;
+  
+  console.log('[API] getHistorialUsuario - URL completa:', url);
+  
+  try {
+    const response = await api.get(url);
+    console.log('[API] getHistorialUsuario - Response status:', response.status);
+    console.log('[API] getHistorialUsuario - Response data:', response.data);
+    return response.data.data || response.data;
+  } catch (error: any) {
+    console.error('[API] getHistorialUsuario - Error:', error);
+    console.error('[API] getHistorialUsuario - Error response:', error.response?.data);
+    throw error;
+  }
 };
 
 export default api;

@@ -158,7 +158,7 @@ export default function HeaderMenu({ title, subtitle, navigation, showNotificati
 
                 <TouchableOpacity 
                   style={styles.menuItem}
-                  onPress={() => navigateTo('MyReservations')}
+                  onPress={() => navigateTo('History')}
                 >
                   <Icon name="time-outline" size={24} color={COLORS.primaryEnd} />
                   <Text style={styles.menuItemText}>Historial</Text>

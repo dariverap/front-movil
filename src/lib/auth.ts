@@ -17,6 +17,7 @@ export interface RegisterData {
 }
 
 export interface User {
+  id?: string; // Usado por algunos endpoints
   id_usuario: string;
   nombre: string;
   apellido: string;
