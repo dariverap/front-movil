@@ -7,8 +7,8 @@ module.exports = {
         moduleName: '@env',
         path: '.env',
         safe: false,
-        allowUndefined: true,
-        verbose: false,
+        allowUndefined: false, // Cambiado a false para detectar variables no cargadas
+        verbose: true, // Cambiado a true para ver logs de carga
       },
     ],
   ],
