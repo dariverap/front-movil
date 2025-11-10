@@ -27,7 +27,9 @@ import {
   createVehiculo,
   getEspaciosDisponibles,
   createReserva,
-  Espacio
+  getTarifasByParkingId,
+  Espacio,
+  Tarifa
 } from '../lib/api';
 
 export default function ReserveFlowScreen({ navigation, route }: any) {
@@ -41,18 +43,22 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [espacios, setEspacios] = useState<Espacio[]>([]);
+  const [tarifas, setTarifas] = useState<Tarifa[]>([]);
+  const [selectedTarifaId, setSelectedTarifaId] = useState<number | null>(null);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
   const [loadingEspacios, setLoadingEspacios] = useState(true);
+  const [loadingTarifas, setLoadingTarifas] = useState(true);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<any>(null);
 
-  const steps = ['Fecha', 'Espacio', 'Vehículo', 'Confirmación'];
+    const steps = ['Tarifa', 'Espacio', 'Vehículo', 'Confirmación'];
 
   useEffect(() => {
     loadVehicles();
     loadEspacios();
+    loadTarifas();
   }, []);
 
   const loadVehicles = async () => {
@@ -92,6 +98,26 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
     }
   };
 
+  const loadTarifas = async () => {
+    try {
+      setLoadingTarifas(true);
+      const parkingId = parking.id || parking.id_parking;
+      const data = await getTarifasByParkingId(parkingId);
+      setTarifas(data);
+      
+      // Seleccionar la primera tarifa por defecto (preferiblemente 'hora')
+      if (data.length > 0 && !selectedTarifaId) {
+        const tarifaHora = data.find(t => t.tipo.toLowerCase() === 'hora');
+        setSelectedTarifaId(tarifaHora ? tarifaHora.id_tarifa : data[0].id_tarifa);
+      }
+    } catch (error) {
+      console.error('[ReserveFlow] Error cargando tarifas:', error);
+      Alert.alert('Error', 'No se pudieron cargar las tarifas del estacionamiento');
+    } finally {
+      setLoadingTarifas(false);
+    }
+  };
+
   function handleCancelFlow() {
     Alert.alert('Cancelar reserva', '¿Estás seguro que quieres salir y cancelar el proceso de reserva?', [
       { text: 'Seguir', style: 'cancel' },
@@ -114,8 +140,8 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
   function handleNext() {
     // Validaciones por paso
     if (currentStep === 0) {
-      if (!selectedDate || !selectedTime) {
-        Alert.alert('Selecciona fecha y hora', 'Por favor selecciona una fecha y hora para continuar.');
+        if (!selectedTarifaId) {
+          Alert.alert('Selecciona una tarifa', 'Por favor selecciona el tipo de tarifa para continuar.');
         return;
       }
     }
@@ -160,9 +186,10 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
 
       const reservaCreada = await createReserva({
         id_espacio: selectedEspacioId,
-        id_vehiculo: selectedVehicleId, // ✅ Ya incluido desde antes
+        id_vehiculo: selectedVehicleId,
         fecha_inicio: fecha_inicio.toISOString(),
         fecha_fin: fecha_fin.toISOString(),
+        id_tarifa: selectedTarifaId || undefined, // Enviar id_tarifa si está seleccionado
       });
 
       setProcessing(false);
@@ -272,8 +299,58 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
           {/* Step 0: Date & Time */}
           {currentStep === 0 && (
             <>
-              <Text style={styles.stepTitle}>Reservando para ahora</Text>
-              <GlassCard style={{ marginTop: SPACING.sm }}>
+              <Text style={styles.stepTitle}>Selecciona tipo de tarifa</Text>
+              
+              {/* Selector de Tarifa */}
+              {loadingTarifas ? (
+                <View style={{ padding: SPACING.xl, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={[styles.summaryLabel, { marginTop: SPACING.sm }]}>
+                    Cargando tarifas...
+                  </Text>
+                </View>
+              ) : tarifas.length === 0 ? (
+                <GlassCard style={{ marginTop: SPACING.sm }}>
+                  <Text style={[styles.summaryLabel, { textAlign: 'center' }]}>
+                    No hay tarifas disponibles
+                  </Text>
+                </GlassCard>
+              ) : (
+                <View style={{ marginTop: SPACING.sm }}>
+                  {tarifas.map((tarifa) => (
+                    <TouchableOpacity
+                      key={tarifa.id_tarifa}
+                      style={[
+                        styles.tarifaCard,
+                        selectedTarifaId === tarifa.id_tarifa && styles.tarifaCardSelected
+                      ]}
+                      onPress={() => setSelectedTarifaId(tarifa.id_tarifa)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[
+                          styles.tarifaTipo,
+                          selectedTarifaId === tarifa.id_tarifa && styles.tarifaTipoSelected
+                        ]}>
+                          {tarifa.tipo.charAt(0).toUpperCase() + tarifa.tipo.slice(1)}
+                        </Text>
+                        <Text style={styles.tarifaMonto}>
+                          S/ {tarifa.monto.toFixed(2)}
+                        </Text>
+                        {tarifa.condiciones && (
+                          <Text style={styles.tarifaCondiciones}>
+                            {tarifa.condiciones}
+                          </Text>
+                        )}
+                      </View>
+                      {selectedTarifaId === tarifa.id_tarifa && (
+                        <Icon name="checkmark-circle" size={24} color={COLORS.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <GlassCard style={{ marginTop: SPACING.md }}>
                 <View style={{ padding: SPACING.md }}>
                   <Text style={[styles.summaryLabel, { textAlign: 'center', fontSize: 15 }]}>
                     Tu reserva será efectiva inmediatamente
@@ -399,6 +476,21 @@ export default function ReserveFlowScreen({ navigation, route }: any) {
               <GlassCard style={{ marginTop: SPACING.sm }}>
                 <Text style={styles.summaryTitle}>Resumen de reserva</Text>
                 
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Tipo de tarifa</Text>
+                    <Text style={styles.summaryValue}>
+                      {tarifas.find(t => t.id_tarifa === selectedTarifaId)?.tipo.charAt(0).toUpperCase() + 
+                       tarifas.find(t => t.id_tarifa === selectedTarifaId)?.tipo.slice(1) || 'N/A'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Tarifa base</Text>
+                    <Text style={styles.summaryValue}>
+                      S/ {tarifas.find(t => t.id_tarifa === selectedTarifaId)?.monto.toFixed(2) || '0.00'}
+                    </Text>
+                  </View>
+
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Estacionamiento</Text>
                   <Text style={styles.summaryValue}>{parking.title}</Text>
@@ -536,11 +628,45 @@ const styles = StyleSheet.create({
     color: COLORS.textMid,
     marginTop: 2,
   },
+    // Estilos para tarjetas de tarifa
+    tarifaCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: SPACING.md,
+      marginBottom: SPACING.sm,
+      borderRadius: 12,
+      backgroundColor: COLORS.surface,
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    tarifaCardSelected: {
+      borderColor: COLORS.primary,
+      backgroundColor: 'rgba(102,126,234,0.05)',
+    },
+    tarifaTipo: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: COLORS.textDark,
+    },
+    tarifaTipoSelected: {
+      color: COLORS.primary,
+    },
+    tarifaMonto: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: COLORS.primary,
+      marginTop: 4,
+    },
+    tarifaCondiciones: {
+      fontSize: 12,
+      color: COLORS.textMid,
+      marginTop: 4,
+    },
   // Estilos de modal
   bottomCTA: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, backgroundColor: COLORS.surface },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: SPACING.lg },
-  confirmModal: { padding: SPACING.lg },
-  confirmTitle: { fontSize: 22, fontWeight: '700', color: COLORS.textDark, textAlign: 'center' },
-  confirmText: { color: COLORS.textMid, textAlign: 'center', marginTop: SPACING.sm },
-  confirmButtons: { flexDirection: 'row', marginTop: SPACING.lg },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: SPACING.lg },
+    confirmModal: { padding: SPACING.lg },
+    confirmTitle: { fontSize: 22, fontWeight: '700', color: COLORS.textDark, textAlign: 'center' },
+    confirmText: { color: COLORS.textMid, textAlign: 'center', marginTop: SPACING.sm },
+    confirmButtons: { flexDirection: 'row', marginTop: SPACING.lg },
 });

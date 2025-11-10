@@ -15,7 +15,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import ButtonGradient from '../components/ButtonGradient';
 import GlassCard from '../components/GlassCard';
 import { COLORS, SPACING, TYPE } from '../lib/theme';
-import { getOcupacionActiva, marcarSalida, solicitarSalida } from '../lib/api';
+import { getOcupacionActiva, marcarSalida, solicitarSalida, calcularMontoOcupacion } from '../lib/api';
 
 export default function ActiveParkingScreen({ navigation, route }: any) {
   const [ocupacion, setOcupacion] = useState<any>(null);
@@ -78,24 +78,32 @@ export default function ActiveParkingScreen({ navigation, route }: any) {
     setRefreshing(false);
   };
 
-  const calculateTiempoYCosto = (data: any) => {
+  const calculateTiempoYCosto = async (data: any) => {
     if (!data.hora_entrada) return;
-
     const entrada = new Date(data.hora_entrada);
     const ahora = new Date();
     const horasTranscurridas = (ahora.getTime() - entrada.getTime()) / (1000 * 60 * 60);
-    
     setTiempoTranscurrido(horasTranscurridas);
-
-    // Calcular costo (fracción hacia arriba)
-    const tarifa = data.tarifa_hora || 4.0;
-    const fracciones = Math.ceil(horasTranscurridas);
-    setCostoActual(fracciones * tarifa);
+    try {
+      if (data.id_ocupacion) {
+        const resultado = await calcularMontoOcupacion(data.id_ocupacion);
+        setCostoActual(resultado.monto);
+        setOcupacion((prev: any) => prev ? { ...prev, tarifa_tipo: resultado.tarifa_tipo } : prev);
+      } else {
+        const tarifa = data.tarifa_hora || 4.0;
+        const fracciones = Math.ceil(horasTranscurridas);
+        setCostoActual(fracciones * tarifa);
+      }
+    } catch (e) {
+      const tarifa = data.tarifa_hora || 4.0;
+      const fracciones = Math.ceil(horasTranscurridas);
+      setCostoActual(fracciones * tarifa);
+    }
   };
 
   const updateTiempoYCosto = () => {
     if (ocupacion) {
-      calculateTiempoYCosto(ocupacion);
+      void calculateTiempoYCosto(ocupacion);
     }
   };
 
@@ -265,7 +273,9 @@ export default function ActiveParkingScreen({ navigation, route }: any) {
             <Text style={styles.costLabel}>Costo actual</Text>
             <Text style={styles.costValue}>S/ {costoActual.toFixed(2)}</Text>
             <Text style={styles.costNote}>
-              Tarifa: S/ {(ocupacion.tarifa_hora || 4.0).toFixed(2)}/hora
+              {ocupacion.tarifa_tipo
+                ? `Tarifa (${String(ocupacion.tarifa_tipo).toLowerCase()}): cálculo dinámico`
+                : `Tarifa base hora: S/ ${(ocupacion.tarifa_hora || 4.0).toFixed(2)}`}
             </Text>
           </View>
         </GlassCard>

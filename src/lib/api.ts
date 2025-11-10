@@ -219,6 +219,7 @@ export const createReserva = async (data: {
   id_vehiculo: number;
   fecha_inicio: string; // ISO string
   fecha_fin: string; // ISO string
+  id_tarifa?: number; // Opcional: ID de la tarifa seleccionada
 }): Promise<Reserva> => {
   const response = await api.post('/reservas', data);
   return response.data.data || response.data;
@@ -300,6 +301,20 @@ export const getOcupacionActiva = async (): Promise<Ocupacion | null> => {
     return response.data.data || null;
   }
   return response.data || null;
+};
+
+// Calcular monto de una ocupación (usa lógica backend con tarifa seleccionada)
+export const calcularMontoOcupacion = async (id_ocupacion: number): Promise<{
+  monto: number;
+  tiempo_minutos: number;
+  hora_entrada: string;
+  tarifa_tipo?: string;
+}> => {
+  const response = await api.get(`/ocupaciones/${id_ocupacion}/calcular-monto`);
+  if (response?.data?.success && response.data.data) {
+    return response.data.data;
+  }
+  return response.data;
 };
 
 export const getHistorialOcupaciones = async (): Promise<Ocupacion[]> => {
