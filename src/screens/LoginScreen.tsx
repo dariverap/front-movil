@@ -54,20 +54,7 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
-      'Recuperar contraseña',
-      'Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Continuar', 
-          onPress: () => {
-            // TODO: Implementar pantalla de recuperación de contraseña
-            Alert.alert('Info', 'Funcionalidad próximamente disponible');
-          }
-        }
-      ]
-    );
+    navigation.navigate('ForgotPassword');
   };
 
   return (

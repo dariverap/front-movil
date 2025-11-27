@@ -7,8 +7,8 @@ import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
 console.log('[API] DEBUG - ENV_API_BASE_URL crudo:', ENV_API_BASE_URL);
 console.log('[API] DEBUG - typeof ENV_API_BASE_URL:', typeof ENV_API_BASE_URL);
 
-// Leer API_BASE_URL desde @env (.env via react-native-dotenv) o usar fallback
-const API_BASE_URL = ENV_API_BASE_URL || 'http://10.0.2.2:3000/api';
+// FORZAR URL DE PRODUCCIÓN (temporal para debugging)
+const API_BASE_URL = 'https://apiparking-hzcshhfhgggybuf2.brazilsouth-01.azurewebsites.net/api';
 
 console.log('[API] Configuración inicial - Base URL:', API_BASE_URL);
 
