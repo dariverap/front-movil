@@ -14,7 +14,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, Callout } from 'react-native-maps';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import IconInput from '../components/IconInput';
 import GlassCard from '../components/GlassCard';
@@ -279,11 +279,44 @@ export default function MapScreen({ navigation }: any) {
                   latitude: Number(parking.latitud),
                   longitude: Number(parking.longitud),
                 }}
-                title={parking.nombre || 'Parking'}
-                description={parking.direccion || ''}
                 onPress={() => onMarkerPress(parking)}
-                pinColor="#FF6B35"
-              />
+              >
+                <View style={{
+                  width: 46,
+                  height: 60,
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                }}>
+                  <View style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    backgroundColor: '#764ba2',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 3,
+                    borderColor: '#FFFFFF',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 3,
+                    elevation: 5,
+                  }}>
+                    <MaterialCommunityIcons name="car" size={20} color="#FFFFFF" />
+                  </View>
+                  <View style={{
+                    width: 0,
+                    height: 0,
+                    borderLeftWidth: 7,
+                    borderRightWidth: 7,
+                    borderTopWidth: 10,
+                    borderLeftColor: 'transparent',
+                    borderRightColor: 'transparent',
+                    borderTopColor: '#764ba2',
+                    marginTop: -1,
+                  }} />
+                </View>
+              </Marker>
             ))}
           </MapView>
         )}
@@ -407,15 +440,60 @@ const styles = StyleSheet.create({
     ...TYPE.body,
     color: COLORS.textMid,
   },
-  markerCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FF6B35',
-    borderWidth: 5,
-    borderColor: '#FFFFFF',
+  // Estilos para marcador personalizado
+  markerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerIconWrapper: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: COLORS.primaryEnd,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 4,
+    borderColor: COLORS.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  markerPointer: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderTopWidth: 15,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: COLORS.primaryEnd,
+    marginTop: -2,
+  },
+  calloutContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    padding: SPACING.sm,
+    minWidth: 150,
+    maxWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  calloutTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 4,
+  },
+  calloutDescription: {
+    fontSize: 12,
+    color: COLORS.textMid,
   },
   locationButton: {
     position: 'absolute',
