@@ -1,14 +1,9 @@
 // lib/api.ts
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL as ENV_API_BASE_URL } from '@env';
 
-// DEBUG: Verificar valor crudo de la variable de entorno
-console.log('[API] DEBUG - ENV_API_BASE_URL crudo:', ENV_API_BASE_URL);
-console.log('[API] DEBUG - typeof ENV_API_BASE_URL:', typeof ENV_API_BASE_URL);
-
-// FORZAR URL DE PRODUCCIÓN (temporal para debugging)
-const API_BASE_URL = 'https://apiparking-hzcshhfhgggybuf2.brazilsouth-01.azurewebsites.net/api';
+// URL del API local
+const API_BASE_URL = 'http://192.168.86.2:8000/api';
 
 console.log('[API] Configuración inicial - Base URL:', API_BASE_URL);
 
