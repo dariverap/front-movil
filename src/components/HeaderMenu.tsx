@@ -8,10 +8,12 @@ import {
   Modal,
   Pressable,
   Animated,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { COLORS, SPACING, RADIUS } from '../lib/theme';
+import { logout } from '../lib/auth';
 
 interface HeaderMenuProps {
   title: string;
@@ -49,6 +51,32 @@ export default function HeaderMenu({ title, subtitle, navigation, showNotificati
     setTimeout(() => {
       navigation.navigate(screen);
     }, 300);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Estás seguro de que deseas cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Cerrar sesión',
+          style: 'destructive',
+          onPress: async () => {
+            closeMenu();
+            await logout();
+            // Resetear navegación a Login
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -180,6 +208,16 @@ export default function HeaderMenu({ title, subtitle, navigation, showNotificati
                 >
                   <Icon name="help-circle-outline" size={24} color={COLORS.textMid} />
                   <Text style={styles.menuItemText}>Ayuda</Text>
+                </TouchableOpacity>
+
+                <View style={styles.divider} />
+
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={handleLogout}
+                >
+                  <Icon name="log-out-outline" size={24} color="#EF4444" />
+                  <Text style={[styles.menuItemText, { color: '#EF4444' }]}>Cerrar sesión</Text>
                 </TouchableOpacity>
               </View>
             </Pressable>

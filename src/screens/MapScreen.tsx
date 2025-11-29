@@ -43,6 +43,7 @@ export default function MapScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [selectedParking, setSelectedParking] = useState<Parking | null>(null);
   const [userLocation, setUserLocation] = useState(DEFAULT_REGION);
+  const [searchQuery, setSearchQuery] = useState('');
   // Estado del mapa para diagnóstico
   const [mapReady, setMapReady] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -73,6 +74,17 @@ export default function MapScreen({ navigation }: any) {
 
   const translateY = React.useRef(new Animated.Value(SHEET_MIN_TRANSLATE)).current;
   const lastGestureY = React.useRef(SHEET_MIN_TRANSLATE);
+
+  // Filtrar parkings por búsqueda
+  const filteredParkings = React.useMemo(() => {
+    if (!searchQuery.trim()) return parkings;
+    
+    const query = searchQuery.toLowerCase().trim();
+    return parkings.filter(p => 
+      p.nombre.toLowerCase().includes(query) ||
+      p.direccion?.toLowerCase().includes(query)
+    );
+  }, [parkings, searchQuery]);
 
   // Cargar parkings al montar el componente
   useEffect(() => {
@@ -238,7 +250,11 @@ export default function MapScreen({ navigation }: any) {
       <View style={styles.content}>
         {/* Barra de búsqueda sobre el mapa */}
         <View style={styles.searchContainer}>
-          <IconInput placeholder="Buscar zona o dirección" />
+          <IconInput 
+            placeholder="Buscar parking por nombre" 
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
 
         {/* Mapa con markers reales */}
@@ -382,14 +398,14 @@ export default function MapScreen({ navigation }: any) {
           <View style={styles.sheetContent}>
             <Text style={styles.sheetTitle}>Parkings disponibles</Text>
             <Text style={styles.sheetSubtitle}>
-              {parkings.length === 0 
-                ? 'No hay parkings disponibles' 
-                : `${parkings.length} ${parkings.length === 1 ? 'parking encontrado' : 'parkings encontrados'}`
+              {filteredParkings.length === 0 
+                ? (searchQuery ? `No se encontraron parkings con "${searchQuery}"` : 'No hay parkings disponibles')
+                : `${filteredParkings.length} ${filteredParkings.length === 1 ? 'parking encontrado' : 'parkings encontrados'}`
               }
             </Text>
 
             <FlatList
-              data={parkings}
+              data={filteredParkings}
               keyExtractor={(item) => item.id_parking.toString()}
               renderItem={renderParkingItem}
               contentContainerStyle={{ paddingBottom: 60 }}
