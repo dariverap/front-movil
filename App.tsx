@@ -15,6 +15,7 @@ import MyReservationsScreen from './src/screens/MyReservationsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import AboutScreen from './src/screens/AboutScreen';
 import { AuthProvider } from './src/hooks/useAuth';
 
 const Stack = createNativeStackNavigator();
@@ -37,6 +38,7 @@ function App(): React.JSX.Element {
             <Stack.Screen name="ActiveParking" component={ActiveParkingScreen} />
             <Stack.Screen name="MyReservations" component={MyReservationsScreen} />
             <Stack.Screen name="History" component={HistoryScreen} />
+            <Stack.Screen name="About" component={AboutScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </AuthProvider>

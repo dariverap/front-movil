@@ -138,14 +138,20 @@ export default function HeaderMenu({ title, subtitle, navigation, showNotificati
             <Pressable style={styles.menuContent}>
               {/* Header del menú */}
               <View style={styles.menuHeader}>
-                <Icon name="car" size={40} color={COLORS.primaryEnd} />
-                <Text style={styles.menuTitle}>Parkly</Text>
                 <TouchableOpacity 
                   style={styles.closeButton}
                   onPress={closeMenu}
                 >
                   <Icon name="close" size={24} color={COLORS.textMid} />
                 </TouchableOpacity>
+              </View>
+
+              {/* Logo centrado */}
+              <View style={styles.logoContainer}>
+                <View style={styles.logoCircle}>
+                  <Icon name="car-sport" size={40} color="#FFF" />
+                </View>
+                <Text style={styles.menuTitle}>ParkingSys</Text>
               </View>
 
               {/* Opciones del menú */}
@@ -208,6 +214,14 @@ export default function HeaderMenu({ title, subtitle, navigation, showNotificati
                 >
                   <Icon name="help-circle-outline" size={24} color={COLORS.textMid} />
                   <Text style={styles.menuItemText}>Ayuda</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={() => navigateTo('About')}
+                >
+                  <Icon name="information-circle-outline" size={24} color={COLORS.textMid} />
+                  <Text style={styles.menuItemText}>Acerca de</Text>
                 </TouchableOpacity>
 
                 <View style={styles.divider} />
@@ -300,17 +314,33 @@ const styles = StyleSheet.create({
   },
   menuHeader: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: SPACING.md,
+  },
+  logoContainer: {
     alignItems: 'center',
-    padding: SPACING.xl,
+    paddingVertical: SPACING.lg,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: COLORS.primaryEnd,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+    shadowColor: COLORS.primaryEnd,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   menuTitle: {
-    flex: 1,
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: COLORS.textDark,
-    marginLeft: SPACING.sm,
   },
   closeButton: {
     padding: SPACING.xs,

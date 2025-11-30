@@ -2,8 +2,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// URL del API local
-const API_BASE_URL = 'http://192.168.86.2:8000/api';
+// URL del API en Azure (producción)
+const API_BASE_URL = 'https://apiparking-hzcshhfhgggybuf2.brazilsouth-01.azurewebsites.net/api';
 
 console.log('[API] Configuración inicial - Base URL:', API_BASE_URL);
 
